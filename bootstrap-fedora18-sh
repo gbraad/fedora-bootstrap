@@ -19,8 +19,7 @@ mkdir -p $ROOTFS
 TMPROOT=/tmp
 mkdir -p $TMPROOT
 
-PKG_LIST="yum initscripts passwd rsyslog vim dhclient chkconfig rootfiles policycoreutils openssh-server net-tools"
-EXTRA_PKG_LIST="nc traceroute"
+PKG_LIST="yum initscripts passwd rsyslog vim dhclient chkconfig rootfiles policycoreutils openssh-server net-tools nc traceroute"
 MIRRORLIST_URL="http://mirrors.fedoraproject.org/mirrorlist?repo=fedora-$release&arch=$arch"
 
 echo "Fetching release mirror"
@@ -29,16 +28,15 @@ MIRROR_URL=$(curl -s -S -f "$MIRRORLIST_URL" | head -n2 | tail -n1)
 RELEASE_URL="$MIRROR_URL/Packages/f/fedora-release-$release-1.noarch.rpm"
 echo "Fetching from $RELEASE_URL"
 
-curl -sf "$RELEASE_URL" > $TMPROOT/fedora-release-$release.noarch.rpm
+curl -sf "$RELEASE_URL" > $TMPROOT/$(basename $RELEASE_URL)
 mkdir -p $ROOTFS/var/lib/rpm
 rpm --root $ROOTFS --initdb
-rpm --root $ROOTFS -ivh $TMPROOT/fedora-release-$release.noarch.rpm
+rpm --root $ROOTFS -ivh $TMPROOT/$(basename $RELEASE_URL)
 yum --releasever=$release --installroot $ROOTFS -y --nogpgcheck install $PKG_LIST
 
 # -- configure fedora
 
 # configure selinux
-
 mkdir -p $ROOTFS/selinux
 echo 0 > $ROOTFS/selinux/enforce
 
@@ -97,12 +95,22 @@ search wyrls.net
 EOF
 
 # configure systemd
-unlink ${ROOTFS}/etc/systemd/system/default.target
-touch ${ROOTFS}/etc/fstab
-chroot ${ROOTFS} ln -s /dev/null /etc/systemd/system/udev.service
-chroot ${ROOTFS} ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
-#dependency on a device unit fails it specially that we disabled udev
-sed -i 's/After=dev-%i.device/After=/' ${ROOTFS}/lib/systemd/system/getty\@.service
+ETC=/etc/systemd/system
+LIB=/lib/systemd/system
+chroot ${ROOTFS} ln -sf ${LIB}/multi-user.target ${ETC}/default.target
+chroot ${ROOTFS} cp ${LIB}/basic.target ${ETC}/basic.target
+chroot ${ROOTFS} sed -i 's/sysinit.target/systemd-tmpfiles-setup.service/' ${ETC}/basic.target
+chroot ${ROOTFS} ln -s /dev/null ${ETC}/sysinit.target
+chroot ${ROOTFS} ln -s /dev/null ${ETC}/udev-settle.service
+chroot ${ROOTFS} ln -s /dev/null ${ETC}/fedora-readonly.service
+chroot ${ROOTFS} rm -f ${ETC}/getty.target.wants/getty\@tty{2,3,4,5,6}.service
+chroot ${ROOTFS} ln -s /dev/null ${ETC}/console-shell.service
+chroot ${ROOTFS} cp ${LIB}/getty\@.service ${ETC}/getty\@.service
+chroot ${ROOTFS} sed -i 's/^BindTo/\#&/' ${ETC}/getty\@.service
+chroot ${ROOTFS} ln -sf ${ETC}/getty\@.service ${ETC}/getty.target.wants/getty\@tty1.service
+chroot ${ROOTFS} sed -i 's/^Defaults\ *requiretty/\#&/' /etc/sudoers
+chroot ${ROOTFS} sed -i 's/^.*loginuid.so.*$/\#&/' /etc/pam.d/login
+chroot ${ROOTFS} echo "pts/0" >> /etc/securetty
 
 # -- set default root password
 echo "setting root passwd to '$ROOT_PASSWORD'"
@@ -159,4 +167,3 @@ EOF
 
 
 # -- end sample config
-
