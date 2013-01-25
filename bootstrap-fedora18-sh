@@ -117,7 +117,8 @@ echo "setting root passwd to '$ROOT_PASSWORD'"
 echo "root:$ROOT_PASSWORD" | chroot $ROOTFS chpasswd
 
 # -- enable sshd
-chroot $ROOTFS systemctl enable sshd.service
+chroot ${ROOTFS} systemctl enable sshd.service
+chroot ${ROOTFS} chkconfig network on
 
 # -- end
 exit
