@@ -1,0 +1,162 @@
+#!/bin/sh
+
+#----
+# bootstrap fedora18
+
+#release=$(cat /etc/fedora-release | awk '/^Fedora/ {print $3}')
+#arch=$(arch)
+release=18
+arch=x86_64
+ROOTFS=/rootfs/fedora$release-$arch
+ROOT_PASSWORD=ketsui
+UTSNAME=fedora18
+
+# -- prepare rootfs directory
+rm -rf $ROOTFS
+mkdir -p $ROOTFS
+
+# -- download base system
+TMPROOT=/tmp
+mkdir -p $TMPROOT
+
+PKG_LIST="yum initscripts passwd rsyslog vim dhclient chkconfig rootfiles policycoreutils openssh-server net-tools"
+EXTRA_PKG_LIST="nc traceroute"
+MIRRORLIST_URL="http://mirrors.fedoraproject.org/mirrorlist?repo=fedora-$release&arch=$arch"
+
+echo "Fetching release mirror"
+MIRROR_URL=$(curl -s -S -f "$MIRRORLIST_URL" | head -n2 | tail -n1)
+
+RELEASE_URL="$MIRROR_URL/Packages/f/fedora-release-$release-1.noarch.rpm"
+echo "Fetching from $RELEASE_URL"
+
+curl -sf "$RELEASE_URL" > $TMPROOT/fedora-release-$release.noarch.rpm
+mkdir -p $ROOTFS/var/lib/rpm
+rpm --root $ROOTFS --initdb
+rpm --root $ROOTFS -ivh $TMPROOT/fedora-release-$release.noarch.rpm
+yum --releasever=$release --installroot $ROOTFS -y --nogpgcheck install $PKG_LIST
+
+# -- configure fedora
+
+# configure selinux
+
+mkdir -p $ROOTFS/selinux
+echo 0 > $ROOTFS/selinux/enforce
+
+# configure /dev
+DEV_PATH=${ROOTFS}/dev
+rm -rf $DEV_PATH
+mkdir -p $DEV_PATH
+mknod -m 666 ${DEV_PATH}/null c 1 3
+mknod -m 666 ${DEV_PATH}/zero c 1 5
+mknod -m 666 ${DEV_PATH}/random c 1 8
+mknod -m 666 ${DEV_PATH}/urandom c 1 9
+mkdir -m 755 ${DEV_PATH}/pts
+mkdir -m 1777 ${DEV_PATH}/shm
+mknod -m 666 ${DEV_PATH}/tty c 5 0
+mknod -m 666 ${DEV_PATH}/tty0 c 4 0
+mknod -m 666 ${DEV_PATH}/tty1 c 4 1
+mknod -m 666 ${DEV_PATH}/tty2 c 4 2
+mknod -m 666 ${DEV_PATH}/tty3 c 4 3
+mknod -m 666 ${DEV_PATH}/tty4 c 4 4
+mknod -m 600 ${DEV_PATH}/console c 5 1
+mknod -m 666 ${DEV_PATH}/full c 1 7
+mknod -m 600 ${DEV_PATH}/initctl p
+mknod -m 666 ${DEV_PATH}/ptmx c 5 2
+
+# configure fstab
+cat <<EOF > ${ROOTFS}/etc/fstab
+proc            /proc         proc    nodev,noexec,nosuid 0 0
+devpts          /dev/pts      devpts  defaults 0 0
+sysfs           /sys          sysfs   defaults  0 0
+EOF
+
+# configure default eth interface
+cat <<EOF > ${ROOTFS}/etc/sysconfig/network-scripts/ifcfg-eth0
+DEVICE=eth0
+BOOTPROTO=dhcp
+ONBOOT=yes
+NM_CONTROLLED=no
+TYPE=Ethernet
+EOF
+
+# configure 
+cat <<EOF > ${ROOTFS}/etc/sysconfig/network
+NETWORKING=yes
+HOSTNAME=${UTSNAME}
+EOF
+
+# configure host
+cat <<EOF > ${ROOTFS}/etc/hosts
+127.0.0.1 localhost ${UTSNAME}
+EOF
+
+# config resolv.conf
+cat <<EOF > ${ROOTFS}/etc/resolv.conf
+nameserver 8.8.8.8
+search wyrls.net
+EOF
+
+# configure systemd
+unlink ${ROOTFS}/etc/systemd/system/default.target
+touch ${ROOTFS}/etc/fstab
+chroot ${ROOTFS} ln -s /dev/null /etc/systemd/system/udev.service
+chroot ${ROOTFS} ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
+#dependency on a device unit fails it specially that we disabled udev
+sed -i 's/After=dev-%i.device/After=/' ${ROOTFS}/lib/systemd/system/getty\@.service
+
+# -- set default root password
+echo "setting root passwd to '$ROOT_PASSWORD'"
+echo "root:$ROOT_PASSWORD" | chroot $ROOTFS chpasswd
+
+# -- enable sshd
+chroot $ROOTFS systemctl enable sshd.service
+
+# -- end
+exit
+
+# -- sample lxc config
+LXC_ROOT_PATH=/var/lib/lxc
+#LXC_ROOT_PATH=/usr/local/var/lib/lxc
+LXC_NETWORK_TYPE=veth
+LXC_NETWORK_LINK=br0
+
+cat <<EOF >> ${LXC_ROOT_PATH}/${UTSNAME}/config
+lxc.utsname = ${UTSNAME}
+lxc.tty = 4
+lxc.pts = 1024
+lxc.rootfs = $ROOTFS
+lxc.mount  = ${ROOTFS}/etc/fstab
+
+#networking
+lxc.network.type = ${LXC_NETWORK_TYPE}
+lxc.network.flags = up
+lxc.network.link = ${LXC_NETWORK_LINK}
+lxc.network.name = eth0
+lxc.network.mtu = 1500
+
+#cgroups
+lxc.cgroup.devices.deny = a
+
+# /dev/null and zero
+lxc.cgroup.devices.allow = c 1:3 rwm
+lxc.cgroup.devices.allow = c 1:5 rwm
+
+# consoles
+lxc.cgroup.devices.allow = c 5:1 rwm
+lxc.cgroup.devices.allow = c 5:0 rwm
+lxc.cgroup.devices.allow = c 4:0 rwm
+lxc.cgroup.devices.allow = c 4:1 rwm
+
+# /dev/{,u}random
+lxc.cgroup.devices.allow = c 1:9 rwm
+lxc.cgroup.devices.allow = c 1:8 rwm
+lxc.cgroup.devices.allow = c 136:* rwm
+lxc.cgroup.devices.allow = c 5:2 rwm
+
+# rtc
+lxc.cgroup.devices.allow = c 254:0 rwm
+EOF
+
+
+# -- end sample config
+
