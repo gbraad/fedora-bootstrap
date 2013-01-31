@@ -29,7 +29,7 @@ curl -sf "$RELEASE_URL" > $TMPROOT/$(basename $RELEASE_URL)
 mkdir -p $ROOTFS/var/lib/rpm
 rpm --root $ROOTFS --initdb
 rpm --root $ROOTFS -ivh $TMPROOT/$(basename $RELEASE_URL)
-yum --setopt=fedora.baseurl="$BASE_URL/releases/$release/Everything/$arch/os/" --setopt=fedora-updates.baseurl="$BASE_URL/updates/$release/$arch/" \
+yum --noplugins --setopt=fedora.baseurl="$BASE_URL/releases/$release/Everything/$arch/os/" --setopt=fedora-updates.baseurl="$BASE_URL/updates/$release/$arch/" \
 --releasever=$release --installroot $ROOTFS -y --nogpgcheck install $PKG_LIST
 
 # continue only on success
