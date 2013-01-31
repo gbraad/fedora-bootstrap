@@ -110,7 +110,8 @@ chroot ${ROOTFS} sed -i 's/^BindTo/\#&/' ${ETC}/getty\@.service
 chroot ${ROOTFS} ln -sf ${ETC}/getty\@.service ${ETC}/getty.target.wants/getty\@tty1.service
 chroot ${ROOTFS} sed -i 's/^Defaults\ *requiretty/\#&/' /etc/sudoers
 chroot ${ROOTFS} sed -i 's/^.*loginuid.so.*$/\#&/' /etc/pam.d/login
-chroot ${ROOTFS} echo "pts/0" >> /etc/securetty
+chroot ${ROOTFS} sed -i 's/^.*loginuid.so.*$/\#&/' /etc/pam.d/sshd
+echo "pts/0" >> ${ROOTFS}/etc/securetty
 
 # -- set default root password
 echo "setting root passwd to '$ROOT_PASSWORD'"
