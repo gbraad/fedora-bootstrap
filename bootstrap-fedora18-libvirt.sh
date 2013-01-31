@@ -87,6 +87,11 @@ NETWORKING=yes
 HOSTNAME=${UTSNAME}
 EOF
 
+# configure hostname
+cat <<EOF > ${ROOTFS}/etc/hostname
+${UTSNAME}
+EOF
+
 # configure host
 cat <<EOF > ${ROOTFS}/etc/hosts
 127.0.0.1 localhost ${UTSNAME}
