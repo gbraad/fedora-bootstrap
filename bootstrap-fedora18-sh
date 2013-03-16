@@ -7,8 +7,8 @@
 #arch=$(arch)
 release=18
 arch=x86_64
-ROOTFS=/rootfs/fedora$release-$arch
-ROOT_PASSWORD=ketsui
+ROOTFS=/rootfs/centos$release-$arch
+ROOT_PASSWORD=toor
 UTSNAME=fedora18
 
 # -- prepare rootfs directory
@@ -20,19 +20,23 @@ TMPROOT=/tmp
 mkdir -p $TMPROOT
 
 PKG_LIST="yum initscripts passwd rsyslog vim dhclient chkconfig rootfiles policycoreutils openssh-server net-tools nc traceroute"
-MIRRORLIST_URL="http://mirrors.fedoraproject.org/mirrorlist?repo=fedora-$release&arch=$arch"
 
-echo "Fetching release mirror"
-MIRROR_URL=$(curl -s -S -f "$MIRRORLIST_URL" | head -n2 | tail -n1)
-
-RELEASE_URL="$MIRROR_URL/Packages/f/fedora-release-$release-1.noarch.rpm"
+BASE_URL="http://mirror.switch.ch/ftp/mirror/fedora/linux"
+RELEASE_URL="$BASE_URL/releases/$release/Fedora/$arch/os/Packages/f/fedora-release-$release-1.noarch.rpm"
 echo "Fetching from $RELEASE_URL"
 
 curl -sf "$RELEASE_URL" > $TMPROOT/$(basename $RELEASE_URL)
 mkdir -p $ROOTFS/var/lib/rpm
 rpm --root $ROOTFS --initdb
 rpm --root $ROOTFS -ivh $TMPROOT/$(basename $RELEASE_URL)
-yum --releasever=$release --installroot $ROOTFS -y --nogpgcheck install $PKG_LIST
+yum --noplugins --setopt=fedora.baseurl="$BASE_URL/releases/$release/Everything/$arch/os/" --setopt=fedora-updates.baseurl="$BASE_URL/updates/$release/$arch/" \
+--releasever=$release --installroot $ROOTFS -y --nogpgcheck install $PKG_LIST
+
+# continue only on success
+if [ $? -gt 0 ]; then
+    exit 1
+fi
+
 
 # -- configure fedora
 
@@ -83,6 +87,11 @@ NETWORKING=yes
 HOSTNAME=${UTSNAME}
 EOF
 
+# configure hostname
+cat <<EOF > ${ROOTFS}/etc/hostname
+${UTSNAME}
+EOF
+
 # configure host
 cat <<EOF > ${ROOTFS}/etc/hosts
 127.0.0.1 localhost ${UTSNAME}
@@ -111,6 +120,8 @@ chroot ${ROOTFS} ln -sf ${ETC}/getty\@.service ${ETC}/getty.target.wants/getty\@
 chroot ${ROOTFS} sed -i 's/^Defaults\ *requiretty/\#&/' /etc/sudoers
 chroot ${ROOTFS} sed -i 's/^.*loginuid.so.*$/\#&/' /etc/pam.d/login
 chroot ${ROOTFS} sed -i 's/^.*loginuid.so.*$/\#&/' /etc/pam.d/sshd
+chroot ${ROOTFS} sed -i 's/^.*loginuid.so.*$/\#&/' /etc/pam.d/crond
+chroot ${ROOTFS} sed -i 's/^.*loginuid.so.*$/\#&/' /etc/pam.d/remote
 echo "pts/0" >> ${ROOTFS}/etc/securetty
 
 # -- set default root password
@@ -122,7 +133,7 @@ chroot ${ROOTFS} systemctl enable sshd.service
 chroot ${ROOTFS} chkconfig network on
 
 # -- end
-exit
+exit 0
 
 # -- sample lxc config
 LXC_ROOT_PATH=/var/lib/lxc
