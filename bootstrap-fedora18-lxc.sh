@@ -180,8 +180,8 @@ After=network.target
 Type=simple
 Restart=always
 ExecStart=/usr/bin/lxc-start -n $UTSNAME-$arch
-ExecReload=/usr/bin/lxc-restart $UTSNAME-$arch
-ExecStop=/usr/bin/lxc-stop $UTSNAME-$arch
+ExecReload=/usr/bin/lxc-restart -n $UTSNAME-$arch
+ExecStop=/usr/bin/lxc-stop -n $UTSNAME-$arch
 
 [Install]
 WantedBy=multi-user.target
