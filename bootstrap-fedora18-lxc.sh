@@ -7,7 +7,7 @@ arch=`uname -m`
 ROOTFS=/var/lib/lxc/fedora$release-$arch/rootfs
 ROOT_PASSWORD=toor
 UTSNAME=fedora18
-PKG_LIST="yum initscripts passwd rsyslog vim dhclient chkconfig rootfiles policycoreutils openssh-server net-tools nc traceroute"
+PKG_LIST="yum initscripts passwd rsyslog dhclient chkconfig rootfiles policycoreutils openssh-server net-tools nc traceroute"
 BASE_URL="http://mirror.switch.ch/ftp/mirror/fedora/linux"
 RELEASE_URL="$BASE_URL/releases/$release/Fedora/$arch/os/Packages/f/fedora-release-$release-1.noarch.rpm"
 
@@ -25,13 +25,14 @@ curl -sf "$RELEASE_URL" > $TMPROOT/$(basename $RELEASE_URL)
 mkdir -p $ROOTFS/var/lib/rpm
 rpm --root $ROOTFS --initdb
 rpm --root $ROOTFS -ivh $TMPROOT/$(basename $RELEASE_URL)
-yum --noplugins \
+yum -y install \
+    --noplugins \
     --setopt=fedora.baseurl="$BASE_URL/releases/$release/Everything/$arch/os/" \
     --setopt=fedora-updates.baseurl="$BASE_URL/updates/$release/$arch/" \
     --releasever=$release \
     --installroot $ROOTFS \
-    --nogpgcheck
-    -y install $PKG_LIST
+    --nogpgcheck \
+     $PKG_LIST
 
 # Continue only on success
 if [ $? -gt 0 ]; then
