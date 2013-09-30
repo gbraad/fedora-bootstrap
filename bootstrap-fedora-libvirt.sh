@@ -37,7 +37,6 @@ if [ $? -gt 0 ]; then
     exit 1
 fi
 
-
 # -- configure fedora
 
 # configure selinux
@@ -117,10 +116,10 @@ chroot ${ROOTFS} ln -s /dev/null ${ETC}/console-shell.service
 chroot ${ROOTFS} cp ${LIB}/getty\@.service ${ETC}/getty\@.service
 chroot ${ROOTFS} sed -i 's/^BindTo/\#&/' ${ETC}/getty\@.service
 chroot ${ROOTFS} ln -sf ${ETC}/getty\@.service ${ETC}/getty.target.wants/getty\@tty1.service
-chroot ${ROOTFS} sed -i 's/^Defaults\ *requiretty/\#&/' /etc/sudoers
+#chroot ${ROOTFS} sed -i 's/^Defaults\ *requiretty/\#&/' /etc/sudoers
 chroot ${ROOTFS} sed -i 's/^.*loginuid.so.*$/\#&/' /etc/pam.d/login
 chroot ${ROOTFS} sed -i 's/^.*loginuid.so.*$/\#&/' /etc/pam.d/sshd
-chroot ${ROOTFS} sed -i 's/^.*loginuid.so.*$/\#&/' /etc/pam.d/crond
+#chroot ${ROOTFS} sed -i 's/^.*loginuid.so.*$/\#&/' /etc/pam.d/crond
 chroot ${ROOTFS} sed -i 's/^.*loginuid.so.*$/\#&/' /etc/pam.d/remote
 echo "pts/0" >> ${ROOTFS}/etc/securetty
 
