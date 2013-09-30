@@ -22,7 +22,7 @@ mkdir -p $TMPROOT
 PKG_LIST="yum initscripts passwd rsyslog vim dhclient chkconfig rootfiles policycoreutils openssh-server net-tools nc traceroute"
 
 BASE_URL="http://mirror.switch.ch/ftp/mirror/fedora/linux"
-RELEASE_URL="$BASE_URL/releases/$release/Fedora/$arch/os/Packages/f/fedora-release-$release-1.noarch.rpm"
+RELEASE_URL="$BASE_URL/releases/$release/Fedora/$arch/os/Packages/f/fedora-release-$release-2.noarch.rpm"
 echo "Fetching from $RELEASE_URL"
 
 curl -sf "$RELEASE_URL" > $TMPROOT/$(basename $RELEASE_URL)

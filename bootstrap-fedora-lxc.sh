@@ -9,7 +9,7 @@ ROOT_PASSWORD=toor
 UTSNAME=fedora19
 PKG_LIST="yum initscripts passwd rsyslog dhclient chkconfig rootfiles policycoreutils openssh-server net-tools nc traceroute"
 BASE_URL="http://mirror.switch.ch/ftp/mirror/fedora/linux"
-RELEASE_URL="$BASE_URL/releases/$release/Fedora/$arch/os/Packages/f/fedora-release-$release-1.noarch.rpm"
+RELEASE_URL="$BASE_URL/releases/$release/Fedora/$arch/os/Packages/f/fedora-release-$release-2.noarch.rpm"
 
 # Prepare rootfs directory
 rm -rf $ROOTFS
