@@ -1,15 +1,15 @@
 #!/bin/sh
 
 #----
-# bootstrap fedora18
+# bootstrap fedora19
 
 #release=$(cat /etc/fedora-release | awk '/^Fedora/ {print $3}')
 #arch=$(arch)
-release=18
+release=19
 arch=x86_64
 ROOTFS=/var/lib/libvirt/lxc/fedora$release-$arch
 ROOT_PASSWORD=toor
-UTSNAME=fedora18
+UTSNAME=fedora19
 
 # -- prepare rootfs directory
 rm -rf $ROOTFS
